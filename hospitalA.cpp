@@ -54,8 +54,8 @@ void udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 	hints.ai_family = AF_UNSPEC; // set to AF_INET to use IPv4 
 	hints.ai_socktype = SOCK_DGRAM;
 	//hints.ai_flags = AI_PASSIVE; // use my IP
-	if ((rv = getaddrinfo("localhost/127.0.0.1/::1", HospitalA_UDP_PORT, &hints, &servinfo)) != 0) { 
-		perror("getaddrinfo: %s\n", gai_strerror(rv)); 
+	if ((rv = getaddrinfo("127.0.0.1", HospitalA_UDP_PORT, &hints, &servinfo)) != 0) { 
+		perror("Error: getaddrinfo"); 
 		exit(1);
 	}
 	    // loop through all the results and bind to the first we can

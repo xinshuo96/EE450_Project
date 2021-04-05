@@ -16,6 +16,8 @@
 #include <sstream>
 #include <map>
 
+using namespace std;
+
 #define TCP_PORT "34666";
 #define MAXBUFLEN 100
 
@@ -64,13 +66,14 @@ void tcp_connection_setup() {
 		exit(1);
 	}
 	if (listen(sockfd, BACKLOG) == -1) { 
-		perror("Error: listen");
+		perror("Error: listen\n");
 		exit(1);
 	}
 
 }
 
-void sent_loc_to_scheduler(char* loc) {
+// edited from beej's tutorial
+void send_loc_to_scheduler(char* loc) {
 	sin_size = sizeof scheduler_addr;
 	new_fd = accept(sockfd, (struct sockaddr *)&scheduler_addr, &sin_size);
 
@@ -81,23 +84,23 @@ void sent_loc_to_scheduler(char* loc) {
 	if (!fork()) { // this is the child process 
 		close(sockfd); // child doesn't need the listener 
 		if (send(new_fd, loc, 13, 0) == -1) {
-                perror("Error: send");
+                perror("Error: send\n");
                 exit(1);
         }
         close(new_fd);
 	}
 	close(new_fd);
-	cout << "The client has sent query to Scheduler using TCP: client location ​%s " << loc << endl;
+	cout << "The client has sent query to Scheduler using TCP: client location " << loc << endl;
 }
 
 int main(int argc, char* argv[]) {
 	if (argc <= 0 || argc > 1) {
-		perror("Error: wrong client usage information format.");
+		perror("Error: wrong client usage information format.\n");
 		exit(1);
 	}
 	cout << "The client is up and running." << endl;
 
 	tcp_connection_setup();
-	sent_loc_to_scheduler(argv[0]);
+	send_loc_to_scheduler(argv[0]);
 
 }
