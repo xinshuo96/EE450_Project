@@ -16,7 +16,7 @@
 #include <sstream>
 #include <map>
 
-#define HospitalB_UDP_PORT "31666";
+#define HospitalB_UDP_PORT 31666;
 #define MAXBUFLEN 100
 
 using namespace std;

@@ -18,7 +18,7 @@
 
 using namespace std;
 
-#define TCP_PORT "34666";
+#define TCP_PORT 34666;
 #define MAXBUFLEN 100
 
 int sockfd, new_fd;

@@ -16,8 +16,8 @@
 #include <sstream>
 #include <map>
 
-#define Scheduler_UDP_PORT "33666";
-#define TCP_PORT "34666";
+#define Scheduler_UDP_PORT 33666;
+#define TCP_PORT 34666;
 #define MAXBUFLEN 100
 
 using namespace std;
