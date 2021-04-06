@@ -18,8 +18,9 @@
 
 using namespace std;
 
-#define TCP_PORT 34666;
+#define TCP_PORT "34666"
 #define MAXBUFLEN 100
+#define BACKLOG 10
 
 int sockfd, new_fd;
 struct sockaddr_storage scheduler_addr;
@@ -74,7 +75,7 @@ void tcp_connection_setup() {
 
 // edited from beej's tutorial
 void send_loc_to_scheduler(char* loc) {
-	sin_size = sizeof scheduler_addr;
+	socklen_t sin_size = sizeof scheduler_addr;
 	new_fd = accept(sockfd, (struct sockaddr *)&scheduler_addr, &sin_size);
 
 	if (new_fd == -1) { 

@@ -16,7 +16,7 @@
 #include <sstream>
 #include <map>
 
-#define HospitalB_UDP_PORT 31666;
+#define HospitalB_UDP_PORT "31666"
 #define MAXBUFLEN 100
 
 using namespace std;
@@ -24,7 +24,7 @@ using namespace std;
 /* global variables */
 map<int, map<int, int>> mapMatrix;
 int udp_sockfd;
-struct sockaddr_in scheduler_addr;  
+//struct sockaddr_in scheduler_addr;  
 
 
 void bootup() {
@@ -60,15 +60,15 @@ int udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 	}
 	    // loop through all the results and bind to the first we can
 	for(p = servinfo; p != NULL; p = p->ai_next) {
-		if ((sockfd = socket(p->ai_family, p->ai_socktype,p->ai_protocol)) == -1) { 
+		if ((udp_sockfd = socket(p->ai_family, p->ai_socktype,p->ai_protocol)) == -1) { 
 			perror("Error: socket"); 
 			continue;
 		}
-		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) { 
-				close(sockfd);
-		        perror("Error:  bind");
-				continue; 
-		}
+		// if (bind(udp_sockfd, p->ai_addr, p->ai_addrlen) == -1) { 
+		// 		close(udp_sockfd);
+		//         perror("Error:  bind");
+		// 		continue; 
+		// }
 		break;
 	}
 
@@ -80,14 +80,14 @@ int udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 	freeaddrinfo(servinfo);
 
 	
-	addr_len = sizeof scheduler_addr;
+	//addr_len = sizeof scheduler_addr;
 
 	// send initial capacity and occupancy to scheduler
-	if ((numbytes = sendto(sockfd, totalCapacity, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, &addr_len)) == -1) { 
+	if ((numbytes = sendto(udp_sockfd, totalCapacity, MAXBUFLEN-1 , 0, p->ai_addr, p->ai_addrlen)) == -1) { 
 		perror("Error: recvfrom");
 		exit(1);
 	}
-	if ((numbytes = sendto(sockfd, initialOccupancy, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, &addr_len)) == -1) { 
+	if ((numbytes = sendto(udp_sockfd, initialOccupancy, MAXBUFLEN-1 , 0, p->ai_addr, p->ai_addrlen)) == -1) { 
 		perror("Error: recvfrom");
 		exit(1);
 	}
@@ -96,20 +96,20 @@ int udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 }
 
 int main(int argc, char* argv[]) {
-	int loc = argv[0];
-	int totalCapacity = stoi(argv[1]);
-	int initialOccupancy = stoi(argv[2]);
+	int loc = atoi(argv[1]);
+	int totalCapacity = atoi(argv[2]);
+	int initialOccupancy = atoi(argv[3]);
 
 	// set scheduler info
-	memset(&scheduler_addr, 0, sizeof(scheduler_addr));   
-	scheduler_addr.sin_family = AF_UNSPEC;		
-	scheduler_addr.sin_port = htons(33666);
-	scheduler_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	// memset(&scheduler_addr, 0, sizeof(scheduler_addr));   
+	// scheduler_addr.sin_family = AF_UNSPEC;		
+	// scheduler_addr.sin_port = htons(33666);
+	// scheduler_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 	
-	if ((scheduler_sockfd = socket(AF_UNSPEC, SOCK_DGRAM, 0)) == -1) {
-		perror("Error: scheduler socket error");
-		exit(1);
-	}
+	// if ((scheduler_sockfd = socket(AF_UNSPEC, SOCK_DGRAM, 0)) == -1) {
+	// 	perror("Error: scheduler socket error");
+	// 	exit(1);
+	// }
 
 	bootup();
 	udp_port_setup(argv[1], argv[2]);
