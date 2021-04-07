@@ -19,6 +19,8 @@
 #define Scheduler_UDP_PORT "33666"
 #define TCP_PORT "34666"
 #define MAXBUFLEN 100
+#define MAXDATASIZE 100 // max number of bytes we can get at once
+#define BACKLOG 10
 
 using namespace std;
 
@@ -94,16 +96,16 @@ void listen_to_hospital(int sockfd, struct sockaddr_in hosp_addr, string hosp_na
 	int numbytes1;
 	int numbytes2;
 	socklen_t addr_len = sizeof hosp_addr;
-	cout << "listen on port " << hosp_addr.sin_port << endl;
+	//cout << "listen on port " << hosp_addr.sin_port << endl;
 	numbytes1 = recvfrom(sockfd, buf_cap, MAXBUFLEN-1 , 0, (struct sockaddr *)&hosp_addr, &addr_len);
-	cout << "num of bytes recieved " << numbytes1 << endl;
+	//cout << "num of bytes recieved " << numbytes1 << endl;
 	// if ((numbytes1 = recvfrom(sockfd, buf_cap, MAXBUFLEN-1 , 0, (struct sockaddr *)&hosp_addr, &addr_len)) == -1) { 
 	// 	perror("Error: scheduler recvfrom() error for hospital capacity.");
 	// 	exit(1);
 	// }
 	
 	buf_cap[numbytes1] = '\0';
-	cout << "listen to hospital " << hosp_name << " and capacity is " << buf_cap << endl;
+	//cout << "listen to hospital " << hosp_name << " and capacity is " << buf_cap << endl;
 	if ((numbytes2 = recvfrom(sockfd, buf_occ, MAXBUFLEN-1 , 0, (struct sockaddr *)&hosp_addr, &addr_len)) == -1) { 
 		perror("Error: scheduler recvfrom() error for hospital capacity.");
 		exit(1);
@@ -166,47 +168,85 @@ void udp_port_setup() {
 	
 }
 
+void *get_in_addr(struct sockaddr *sa) {
+	if (sa->sa_family == AF_INET) {
+		return &(((struct sockaddr_in*)sa)->sin_addr);
+	}
+	return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+
 void receive_from_client() {
+	int new_fd;
 	int numbytes;
 	char buf[MAXBUFLEN];
 	struct addrinfo hints, *servinfo, *p; 
+	struct sockaddr_storage client_addr;
 	int rv;
+	int yes = 1;
+	socklen_t sin_size;
 	char s[INET6_ADDRSTRLEN];
 
 	memset(&hints, 0, sizeof hints); 
-	hints.ai_family = AF_UNSPEC; 
+	hints.ai_family = AF_INET; 
 	hints.ai_socktype = SOCK_STREAM;
 
 	if ((rv = getaddrinfo("127.0.0.1", TCP_PORT, &hints, &servinfo)) != 0) { 
-		perror("Error: getaddrinfo"); 
+		perror("Error: getaddrinfo\n"); 
 		exit(1);
 	}
 	for(p = servinfo; p != NULL; p = p->ai_next) {
 		if ((tcp_sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) { 
-			perror("client: socket"); 
+			perror("Error: socket()\n"); 
 			continue;
 		}
-		if (connect(tcp_sockfd, p->ai_addr, p->ai_addrlen) == -1) { 
+		if (setsockopt(tcp_sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+        	perror("Error :setsockopt\n");
+			exit(1); 
+		}
+		if (bind(tcp_sockfd, p->ai_addr, p->ai_addrlen) == -1) { 
 			close(tcp_sockfd);
-            perror("Error: client tcp connect\n");
+        	perror("Error: server bind\n");
 			continue; 
 		}
+
 		break; 
-	}
-	if (p == NULL) {
-		perror("Error: failed to connect.\n");
-		exit(1);
 	}
 
 	freeaddrinfo(servinfo); // all done with this structure
 
-	if ((numbytes = recv(tcp_sockfd, buf, MAXBUFLEN-1, 0)) == -1) {
-		perror("Error: recv\n");
+	if (p == NULL) {
+		perror("Error: failed to connect.\n");
 		exit(1);
 	}
-	buf[numbytes] = '\0';
-	cout << "The Scheduler has received client at location ​" << buf << " from the client using TCP over port " << TCP_PORT << endl;
-	close(tcp_sockfd);
+	if (listen(tcp_sockfd, BACKLOG) == -1) { 
+		perror("listen");
+		exit(1);
+	}
+	cout << "server: waiting for connections..." << endl;
+	while(1) { // main accept() loop
+		sin_size = sizeof client_addr;
+		new_fd = accept(tcp_sockfd, (struct sockaddr *)&client_addr, &sin_size);
+		if (new_fd == -1) { 
+			perror("accept"); 
+			continue;
+		}
+		inet_ntop(client_addr.ss_family, get_in_addr((struct sockaddr *)&client_addr), s, sizeof s);
+        printf("server: got connection from %s\n", s);
+
+		if (!fork()) { // this is the child process 
+			close(tcp_sockfd); // child doesn't need the listener 
+			if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
+            	perror("Error: scheduler fail to receive from client\n");
+			}
+			buf[numbytes] = '\0';
+			cout << "The Scheduler has received client at location " << buf << "from the client using TCP over port " << TCP_PORT << endl;
+            close(new_fd);
+			exit(0); 
+		}
+		close(new_fd); // parent doesn't need this
+	}
+	
 
 }
 
