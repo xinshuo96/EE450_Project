@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 
+#include <limits>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -23,10 +24,14 @@
 using namespace std;
 
 /* global variables */
-map<int, map<int, int> > mapMatrix;
+map<int, map<int, float> > mapMatrix;
+int loc;
+int totalCapacity;
+int initialOccupancy;
 int udp_sockfd;
 int scheduler_sockfd;
 struct sockaddr_in scheduler_addr; 
+int client_location;
 
 void bootup() {
 	// open map file and read location information from it
@@ -35,7 +40,8 @@ void bootup() {
 	string line;
 	while (getline(mapFile, line)) {
 		stringstream linestream(line);
-		int l1, l2, dis;
+		int l1, l2; 
+		float dis;
 		linestream >> l1 >> l2 >> dis;
 		mapMatrix[l1][l2] = dis;
 		mapMatrix[l2][l1] = dis;
@@ -73,15 +79,88 @@ void recieve_client_info() {
 	}
 	
 	client_loc[numbytes] = '\0';
-	cout << "Hospital A has received input from client at location " << client_loc << endl;
+	client_location = atoi(client_loc);
+	cout << "Hospital A has received input from client at location " << client_location << endl;
 }
 
+// dijkstra's algo helper function
+int find_closest_vertex(map<int, bool> finalized, map<int, float> disFromSource) {
+	float minDis = numeric_limits<float>::max();
+	int minVertex;
+
+	map<int, map<int, float> > :: iterator it;
+	for (it = mapMatrix.begin(); it != mapMatrix.end(); it ++) {
+		if (!finalized[it->first] && disFromSource[it->first] < minDis) {
+			minDis = disFromSource[it->first];
+			minVertex = it->first;
+		}
+	}
+	return minVertex;
+}
+
+//dijkstra's algo
+float find_shortest_distance() {
+	// client location is not in the map or client is at the same location as the hospital
+	if (mapMatrix.find(client_location) == mapMatrix.end() || client_location == loc) {
+		return -1;
+	}
+	//create a map to record vertices whose distance to source has been finalized
+	map<int, bool> finalized;
+	//create a map to keep a record of distances from source vertex
+	map<int, float> disFromSource;
+
+	// initialize 
+	map<int, map<int, float> >:: iterator it;
+
+	for (it = mapMatrix.begin(); it != mapMatrix.end(); it ++) {
+		finalized[it->first] = false;
+		disFromSource[it->first] = numeric_limits<float>::max();
+	} 
+
+	disFromSource[client_location] = 0;
+	for (int i = 0; i < mapMatrix.size(); i ++) {
+		int closestVertex = find_closest_vertex(finalized, disFromSource);
+	// 	cout << "============" << endl;
+	// 	cout << "Closet vertex is " << closestVertex << endl;
+	// 	cout << "Cur Distance frm source is " << disFromSource[closestVertex] << endl;
+	// 	cout << "Dis between vertex 2 and 0 is " << mapMatrix[2][0] << endl;
+		finalized[closestVertex] = true;
+		if (closestVertex == loc) {
+		
+			break;
+		}
+		map<int, float>:: iterator itr;
+		for (itr = mapMatrix[closestVertex].begin(); itr != mapMatrix[closestVertex].end(); itr ++) {
+			int keyVtx = itr->first;
+		//	cout << "destination vertex is " << keyVtx << endl;
+			float valDis = itr->second;
+		//	cout << " dis is  " << valDis << endl;;
+			if (!finalized[keyVtx] && disFromSource[keyVtx] > valDis + disFromSource[closestVertex]) {
+				disFromSource[keyVtx] = valDis + disFromSource[closestVertex];
+			}
+		}
+	}
+	return disFromSource[loc];
+
+
+}
+
+void send_message_to_scheduler(char* message) {
+	int numbytes;
+
+	if ((numbytes = sendto(scheduler_sockfd, message, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
+		perror("Error: hosptial A fail sendto() of capacity\n");
+		exit(1);
+	}
+
+
+}
 //edited from beej's tutorial
 void udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 	struct addrinfo hints, *servinfo, *p; 
 	int rv;
-	int numbytes;
-	struct sockaddr_storage their_addr; 
+//	int numbytes;
+//	struct sockaddr_storage their_addr; 
 	// char buf[MAXBUFLEN];
 	socklen_t addr_len;
 	char s[INET6_ADDRSTRLEN];
@@ -118,22 +197,24 @@ void udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 	//addr_len = sizeof scheduler_addr;
 
 	// send initial capacity and occupancy to scheduler
-	if ((numbytes = sendto(scheduler_sockfd, totalCapacity, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
-		perror("Error: hosptial A fail sendto() of capacity\n");
-		exit(1);
-	}
-	if ((numbytes = sendto(scheduler_sockfd, initialOccupancy, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
-		perror("Error: hosptial A fail sendto() of occupancy\n");
-		exit(1);
-	}
+	send_message_to_scheduler(totalCapacity);
+	send_message_to_scheduler(initialOccupancy);
+	// if ((numbytes = sendto(scheduler_sockfd, totalCapacity, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
+	// 	perror("Error: hosptial A fail sendto() of capacity\n");
+	// 	exit(1);
+	// }
+	// if ((numbytes = sendto(scheduler_sockfd, initialOccupancy, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
+	// 	perror("Error: hosptial A fail sendto() of occupancy\n");
+	// 	exit(1);
+	// }
 
 	cout << "Hospital A is up and running using UDP on port " << HospitalA_UDP_PORT << "." << endl;
 }
 
 int main(int argc, char* argv[]) {
-	int loc = atoi(argv[1]);
-	int totalCapacity = atoi(argv[2]);
-	int initialOccupancy = atoi(argv[3]);
+	loc = atoi(argv[1]);
+	totalCapacity = atoi(argv[2]);
+	initialOccupancy = atoi(argv[3]);
 
 	// set scheduler info
 	// memset(&scheduler_addr, 0, sizeof(scheduler_addr));   
@@ -152,8 +233,21 @@ int main(int argc, char* argv[]) {
 	
 	cout << "Hospital A has total capacity " << totalCapacity << " and initial occupancy " << initialOccupancy << "." << endl;
 
+	while (true) {
+		recieve_client_info();
+		if (mapMatrix.find(client_location) == mapMatrix.end()) {
+			cout << "HospitalA does not have the location " << client_location << " in map" << endl;
+			
+			char tmp[] = "location not found";
+			char* meg  = tmp;
+			send_message_to_scheduler(meg);
+			cout << "Hospital A has sent \"location not found\" to the Scheduler" << endl;
+			continue;
+		}
+		int minDistance = find_shortest_distance();
+		cout << "Hospital A has found the shortest path to client, distance = " << minDistance << endl;
+	}
 	
-	recieve_client_info();
 }
 
 
