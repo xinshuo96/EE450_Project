@@ -30,6 +30,7 @@ struct hospital_info
 	int occupancy;
 };
 
+struct sockaddr_in scheduler_addr;
 struct sockaddr_in hospitalA_addr;  
 struct sockaddr_in hospitalB_addr;  
 struct sockaddr_in hospitalC_addr;  
@@ -66,30 +67,30 @@ void set_up_hospital_sock() {
 			perror("Error: fail to create socket for hospital A");
 			exit(1);
 	}
-	if (bind(hospA_sockfd,(struct sockaddr *)&hospitalA_addr, sizeof(struct sockaddr))==-1) {
-			perror("Error: hosptial A bind");
-			exit(1);
-	}
+	// if (bind(hospA_sockfd,(struct sockaddr *)&hospitalA_addr, sizeof(struct sockaddr))==-1) {
+	// 		perror("Error: hosptial A bind");
+	// 		exit(1);
+	// }
 
 	if ((hospB_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 			perror("Error: fail to create socket for hospital B");
 			exit(1);
 	}
-	if (bind(hospB_sockfd,(struct sockaddr *)&hospitalB_addr, sizeof(struct sockaddr))==-1) {
-			perror("Error: hosptial B bind");
-			exit(1);
-	}
+	// if (bind(hospB_sockfd,(struct sockaddr *)&hospitalB_addr, sizeof(struct sockaddr))==-1) {
+	// 		perror("Error: hosptial B bind");
+	// 		exit(1);
+	// }
 
 	if ((hospC_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 			perror("Error: fail to create socket for hospital C");
 			exit(1);
 	}
-	if (bind(hospC_sockfd,(struct sockaddr *)&hospitalC_addr, sizeof(struct sockaddr))==-1) {
-			perror("Error: hosptial C bind");
-			exit(1);
-	}
+	// if (bind(hospC_sockfd,(struct sockaddr *)&hospitalC_addr, sizeof(struct sockaddr))==-1) {
+	// 		perror("Error: hosptial C bind");
+	// 		exit(1);
+	// }
 }
-void listen_to_hospital(int sockfd, struct sockaddr_in hosp_addr, string hosp_name) {
+void listen_to_hospital(struct sockaddr_in hosp_addr, string hosp_name) {
 	cout << "listen to hospital " << hosp_name << endl;
 	char buf_cap[MAXBUFLEN];
 	char buf_occ[MAXBUFLEN];
@@ -97,16 +98,16 @@ void listen_to_hospital(int sockfd, struct sockaddr_in hosp_addr, string hosp_na
 	int numbytes2;
 	socklen_t addr_len = sizeof hosp_addr;
 	//cout << "listen on port " << hosp_addr.sin_port << endl;
-	numbytes1 = recvfrom(sockfd, buf_cap, MAXBUFLEN-1 , 0, (struct sockaddr *)&hosp_addr, &addr_len);
+	//numbytes1 = recvfrom(sockfd, buf_cap, MAXBUFLEN-1 , 0, (struct sockaddr *)&hosp_addr, &addr_len);
 	//cout << "num of bytes recieved " << numbytes1 << endl;
-	// if ((numbytes1 = recvfrom(sockfd, buf_cap, MAXBUFLEN-1 , 0, (struct sockaddr *)&hosp_addr, &addr_len)) == -1) { 
-	// 	perror("Error: scheduler recvfrom() error for hospital capacity.");
-	// 	exit(1);
-	// }
+	if ((numbytes1 = recvfrom(udp_sockfd, buf_cap, MAXBUFLEN-1 , 0, (struct sockaddr *)&hosp_addr, &addr_len)) == -1) { 
+		perror("Error: scheduler recvfrom() error for hospital capacity.");
+		exit(1);
+	}
 	
 	buf_cap[numbytes1] = '\0';
 	//cout << "listen to hospital " << hosp_name << " and capacity is " << buf_cap << endl;
-	if ((numbytes2 = recvfrom(sockfd, buf_occ, MAXBUFLEN-1 , 0, (struct sockaddr *)&hosp_addr, &addr_len)) == -1) { 
+	if ((numbytes2 = recvfrom(udp_sockfd, buf_occ, MAXBUFLEN-1 , 0, (struct sockaddr *)&hosp_addr, &addr_len)) == -1) { 
 		perror("Error: scheduler recvfrom() error for hospital capacity.");
 		exit(1);
 	}
@@ -123,47 +124,34 @@ void listen_to_hospital(int sockfd, struct sockaddr_in hosp_addr, string hosp_na
 	}
 }
 
-//edited from beej's tutorial
-void udp_port_setup() {	
-	struct addrinfo hints, *servinfo, *p; 
-	int rv;
+
+void udp_port_setup() {
 	
+	memset(&scheduler_addr, 0, sizeof(scheduler_addr));   
+	scheduler_addr.sin_family = AF_INET;		
+	scheduler_addr.sin_port = htons(33666);
+	scheduler_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
  
 	
-	socklen_t addr_len;
-	char s[INET6_ADDRSTRLEN];
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_UNSPEC; // set to AF_INET to use IPv4 
-	hints.ai_socktype = SOCK_DGRAM;
-	// hints.ai_flags = AI_PASSIVE; // use my IP
-	if ((rv = getaddrinfo("127.0.0.1", Scheduler_UDP_PORT, &hints, &servinfo)) != 0) { 
-		perror("Error: getaddrinfo\n"); 
+	if ((udp_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) { 
+		perror("Error: socket\n"); 
 		exit(1);
 	}
-	// loop through all the results and bind to the first we can
-	for(p = servinfo; p != NULL; p = p->ai_next) {
-		if ((udp_sockfd = socket(p->ai_family, p->ai_socktype,p->ai_protocol)) == -1) { 
-			perror("Error: socket\n"); 
-			continue;
+	if (bind(udp_sockfd, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr)) == -1) { 
+			close(udp_sockfd);
+            perror("Error: bind\n");
+			exit(1); 
 		}
-		if (bind(udp_sockfd, p->ai_addr, p->ai_addrlen) == -1) { 
-				close(udp_sockfd);
-	            perror("Error: bind\n");
-				continue; 
-		}
-		break;
-	}
-	if (p == NULL) {
-		perror("Error: failed to bind socket\n"); 
-		exit(1);
-	}
-	freeaddrinfo(servinfo);
-	
-	listen_to_hospital(hospA_sockfd, hospitalA_addr, "A");
+
+}
+
+void initialize_hospital_info() {	
+
+	listen_to_hospital(hospitalA_addr, "A");
 	cout << "The Scheduler has received information from Hospital A: total capacity is ​" << hosp_A.capacity << " and initial occupancy is ​" << hosp_A.occupancy << endl;
-	listen_to_hospital(hospB_sockfd, hospitalB_addr, "B");
+	listen_to_hospital(hospitalB_addr, "B");
 	cout << "The Scheduler has received information from Hospital B: total capacity is ​" << hosp_B.capacity << " and initial occupancy is ​" << hosp_B.occupancy << endl;
-	listen_to_hospital(hospC_sockfd, hospitalC_addr, "C");
+	listen_to_hospital(hospitalC_addr, "C");
 	cout << "The Scheduler has received information from Hospital C: total capacity is ​" << hosp_C.capacity << " and initial occupancy is ​" << hosp_C.occupancy << endl;
 	
 }
@@ -175,8 +163,37 @@ void *get_in_addr(struct sockaddr *sa) {
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+/*
+ * after scheduler gets the location of client, send the location info to hospital that has available slots
+ */
+void send_client_info_to_hospital(char* client_loc) {
+	int numbytesA;
+	int numbytesB;
+	int numbytesC;
+	if (hosp_A.capacity > hosp_A.occupancy) {
+		if ((numbytesA = sendto(hospA_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalA_addr, sizeof(struct sockaddr))) == -1) { 
+			perror("Error: scheduler fails to send client location to hospital A\n");
+			exit(1);
+		}
+		cout << "The Scheduler has sent client location to Hospital A using UDP over port " << Scheduler_UDP_PORT << endl;
+	}
+	if (hosp_B.capacity > hosp_B.occupancy) {
+		if ((numbytesB = sendto(hospB_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalB_addr, sizeof(struct sockaddr))) == -1) { 
+			perror("Error: scheduler fails to send client location to hospital B\n");
+			exit(1);
+		}
+		cout << "The Scheduler has sent client location to Hospital B using UDP over port " << Scheduler_UDP_PORT << endl;
+	}
+	if (hosp_C.capacity > hosp_C.occupancy) {
+		if ((numbytesC = sendto(hospC_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalC_addr, sizeof(struct sockaddr))) == -1) { 
+			perror("Error: scheduler fails to send client location to hospital C\n");
+			exit(1);
+		}
+		cout << "The Scheduler has sent client location to Hospital C using UDP over port " << Scheduler_UDP_PORT << endl;
+	}
+}
 
-void receive_from_client() {
+void assign_client() {
 	int new_fd;
 	int numbytes;
 	char buf[MAXBUFLEN];
@@ -240,8 +257,11 @@ void receive_from_client() {
             	perror("Error: scheduler fail to receive from client\n");
 			}
 			buf[numbytes] = '\0';
-			cout << "The Scheduler has received client at location " << buf << "from the client using TCP over port " << TCP_PORT << endl;
-            close(new_fd);
+			cout << "The Scheduler has received client at location " << buf << " from the client using TCP over port " << TCP_PORT << endl;
+            
+			send_client_info_to_hospital(buf);
+			
+			close(new_fd);
 			exit(0); 
 		}
 		close(new_fd); // parent doesn't need this
@@ -250,12 +270,13 @@ void receive_from_client() {
 
 }
 
+
 int main(int argc, char* argv[]) {
 	set_up_hospital_sock();
-
+	udp_port_setup();
 	cout << "The Scheduler is up and running." << endl;
  
-	udp_port_setup();
-	receive_from_client();
+	initialize_hospital_info();
+	assign_client();
 
 }

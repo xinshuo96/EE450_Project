@@ -16,6 +16,7 @@
 #include <sstream>
 #include <map>
 
+#define Scheduler_UDP_PORT "33666"
 #define HospitalC_UDP_PORT "32666"
 #define MAXBUFLEN 100
 
@@ -24,7 +25,8 @@ using namespace std;
 /* global variables */
 map<int, map<int, int>> mapMatrix;
 int udp_sockfd;
-//struct sockaddr_in scheduler_addr;  
+int scheduler_sockfd;
+struct sockaddr_in scheduler_addr;  
 
 void bootup() {
 	// open map file and read location information from it
@@ -39,6 +41,40 @@ void bootup() {
 		mapMatrix[l2][l1] = dis;
 	}
 }
+
+void set_up_scheduler_sock() {
+	// set scheduler info
+	memset(&scheduler_addr, 0, sizeof(scheduler_addr));   
+	scheduler_addr.sin_family = AF_INET;		
+	scheduler_addr.sin_port = htons(33666);
+
+	scheduler_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+
+	if ((scheduler_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+			perror("Error: fail to create socket for scheduler");
+			exit(1);
+	}
+	// if (bind(scheduler_sockfd,(struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))==-1) {
+	// 		perror("Error: scheduler fail to bind");
+	// 		exit(1);
+	// }
+
+}
+
+void recieve_client_info() {
+	char client_loc[MAXBUFLEN];
+	int numbytes;
+	socklen_t addr_len = sizeof scheduler_addr;
+	if ((numbytes = recvfrom(udp_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, &addr_len)) == -1) { 
+		perror("Error: Hospital C fail to receive client location info.\n");
+		exit(1);
+	}
+	
+	client_loc[numbytes] = '\0';
+	cout << "Hospital C has received input from client at location " << client_loc << endl;
+}
+
 
 //edited from beej's tutorial
 int udp_port_setup(char* totalCapacity, char* initialOccupancy) {
@@ -63,11 +99,11 @@ int udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 			perror("Error: socket"); 
 			continue;
 		}
-		// if (bind(udp_sockfd, p->ai_addr, p->ai_addrlen) == -1) { 
-		// 		close(udp_sockfd);
-		//         perror("Error:  bind");
-		// 		continue; 
-		// }
+		if (bind(udp_sockfd, p->ai_addr, p->ai_addrlen) == -1) { 
+				close(udp_sockfd);
+		        perror("Error:  bind");
+				continue; 
+		}
 		break;
 	}
 
@@ -82,11 +118,11 @@ int udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 	// addr_len = sizeof scheduler_addr;
 
 	// send initial capacity and occupancy to scheduler
-	if ((numbytes = sendto(udp_sockfd, totalCapacity, MAXBUFLEN-1 , 0, p->ai_addr, p->ai_addrlen)) == -1) { 
+	if ((numbytes = sendto(scheduler_sockfd, totalCapacity, MAXBUFLEN-1 , 0,  (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
 		perror("Error: recvfrom\n");
 		exit(1);
 	}
-	if ((numbytes = sendto(udp_sockfd, initialOccupancy, MAXBUFLEN-1 , 0, p->ai_addr, p->ai_addrlen)) == -1) { 
+	if ((numbytes = sendto(scheduler_sockfd, initialOccupancy, MAXBUFLEN-1, 0,  (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
 		perror("Error: recvfrom\n");
 		exit(1);
 	}
@@ -111,8 +147,11 @@ int main(int argc, char* argv[]) {
 	// }
 
 	bootup();
-	udp_port_setup(argv[1], argv[2]);
+	set_up_scheduler_sock();
+	udp_port_setup(argv[2], argv[3]);
 	
 	cout << "Hospital C has total capacity " << totalCapacity << "and initial occupancy " << initialOccupancy << "." << endl;
 
+	
+	recieve_client_info();
 }

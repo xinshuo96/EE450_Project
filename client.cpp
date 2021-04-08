@@ -60,7 +60,7 @@ void send_loc_to_scheduler(char* loc) {
 		}
 		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) { 
 			close(sockfd);
-            perror("client: connect");
+            perror("Error: client fail to connect.\n");
 			continue; 
 		}
 		break;
