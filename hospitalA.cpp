@@ -27,7 +27,7 @@ using namespace std;
 map<int, map<int, float> > mapMatrix;
 int loc;
 int totalCapacity;
-int initialOccupancy;
+int Occupancy;
 int udp_sockfd;
 int scheduler_sockfd;
 struct sockaddr_in scheduler_addr; 
@@ -102,7 +102,7 @@ int find_closest_vertex(map<int, bool> finalized, map<int, float> disFromSource)
 float find_shortest_distance() {
 	// client location is not in the map or client is at the same location as the hospital
 	if (mapMatrix.find(client_location) == mapMatrix.end() || client_location == loc) {
-		return -1;
+		return -1.0;
 	}
 	//create a map to record vertices whose distance to source has been finalized
 	map<int, bool> finalized;
@@ -155,6 +155,19 @@ void send_message_to_scheduler(char* message) {
 
 
 }
+
+float cal_score(float dis) {
+	if (dis <= 0) {
+		return dis;
+	}
+	float avail = (float)(totalCapacity-Occupancy)/(float)totalCapacity;
+	float score = 1.0/(dis*(1.1-avail));
+
+	cout << "Hospital A has the score = " << score << endl;
+
+	return score;
+}
+
 //edited from beej's tutorial
 void udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 	struct addrinfo hints, *servinfo, *p; 
@@ -214,7 +227,7 @@ void udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 int main(int argc, char* argv[]) {
 	loc = atoi(argv[1]);
 	totalCapacity = atoi(argv[2]);
-	initialOccupancy = atoi(argv[3]);
+	Occupancy = atoi(argv[3]);
 
 	// set scheduler info
 	// memset(&scheduler_addr, 0, sizeof(scheduler_addr));   
@@ -231,7 +244,7 @@ int main(int argc, char* argv[]) {
 	set_up_scheduler_sock();
 	udp_port_setup(argv[2], argv[3]);
 	
-	cout << "Hospital A has total capacity " << totalCapacity << " and initial occupancy " << initialOccupancy << "." << endl;
+	cout << "Hospital A has total capacity " << totalCapacity << " and initial occupancy " << Occupancy << "." << endl;
 
 	while (true) {
 		recieve_client_info();
@@ -244,8 +257,9 @@ int main(int argc, char* argv[]) {
 			cout << "Hospital A has sent \"location not found\" to the Scheduler" << endl;
 			continue;
 		}
-		int minDistance = find_shortest_distance();
+		float minDistance = find_shortest_distance();
 		cout << "Hospital A has found the shortest path to client, distance = " << minDistance << endl;
+		cal_score(minDistance);
 	}
 	
 }
