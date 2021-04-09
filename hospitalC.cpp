@@ -146,11 +146,11 @@ float find_shortest_distance() {
 
 }
 
-void send_message_to_scheduler(char* message) {
+void send_message_to_scheduler(void* message) {
 	int numbytes;
 
 	if ((numbytes = sendto(scheduler_sockfd, message, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
-		perror("Error: hosptial C fail sendto() of capacity\n");
+		perror("Error: hosptial C fail sendto()\n");
 		exit(1);
 	}
 
@@ -164,7 +164,7 @@ float cal_score(float dis) {
 	float avail = (float)(totalCapacity-Occupancy)/(float)totalCapacity;
 	float score = 1.0/(dis*(1.1-avail));
 
-	cout << "Hospital C has the score = %f" << score << endl;
+	cout << "Hospital C has the score = " << score << endl;
 
 	return score;
 }
@@ -224,6 +224,24 @@ int udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 
 	cout << "Hospital C is up and running using UDP on port " << HospitalC_UDP_PORT << "." << endl;
 }
+char* float_to_charptr(float f) {
+		string scorestr = to_string(f);
+	//	cout << "string score is " << scorestr << endl;
+		int n = scorestr.length();
+		char* scorechar = (char*)malloc((n+1)*sizeof(char));
+		strcpy(scorechar, scorestr.c_str());
+	//	cout << "char array score is " << scorechar << endl;
+		return scorechar;
+		//cout << "string format score is " << res << endl;
+}
+
+// void float_to_charptr(float f, char* res) {
+// 		string scorestr = to_string(f);
+// 		int n = scorestr.length();
+// 		char scorechar[n+1];
+// 		strcpy(scorechar, scorestr.c_str());
+// 		res = scorechar;
+// }
 
 int main(int argc, char* argv[]) {
 	loc = atoi(argv[1]);
@@ -262,7 +280,16 @@ int main(int argc, char* argv[]) {
 		}
 		float minDistance = find_shortest_distance();
 		cout << "Hospital C has found the shortest path to client, distance = " << minDistance << endl;
-		cal_score(minDistance);
+		float score = cal_score(minDistance);
+		// char* scoreMessage;
+		// char* disMessage;
+		char* disMessage = float_to_charptr(minDistance);
+		char* scoreMessage = float_to_charptr(score);
+
+	//	set_up_scheduler_sock();
+		send_message_to_scheduler(disMessage);
+		send_message_to_scheduler(scoreMessage);
+		cout << "Hospital C has sent score = " << scoreMessage << " and distance = " << disMessage << " to the Scheduler" << endl;
 	}
 	
 

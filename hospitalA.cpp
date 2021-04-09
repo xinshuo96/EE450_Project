@@ -145,11 +145,11 @@ float find_shortest_distance() {
 
 }
 
-void send_message_to_scheduler(char* message) {
+void send_message_to_scheduler(void* message) {
 	int numbytes;
 
 	if ((numbytes = sendto(scheduler_sockfd, message, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
-		perror("Error: hosptial A fail sendto() of capacity\n");
+		perror("Error: hosptial A fail sendto()\n");
 		exit(1);
 	}
 
@@ -169,7 +169,7 @@ float cal_score(float dis) {
 }
 
 //edited from beej's tutorial
-void udp_port_setup(char* totalCapacity, char* initialOccupancy) {
+void udp_port_setup() {
 	struct addrinfo hints, *servinfo, *p; 
 	int rv;
 //	int numbytes;
@@ -210,8 +210,6 @@ void udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 	//addr_len = sizeof scheduler_addr;
 
 	// send initial capacity and occupancy to scheduler
-	send_message_to_scheduler(totalCapacity);
-	send_message_to_scheduler(initialOccupancy);
 	// if ((numbytes = sendto(scheduler_sockfd, totalCapacity, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
 	// 	perror("Error: hosptial A fail sendto() of capacity\n");
 	// 	exit(1);
@@ -223,6 +221,18 @@ void udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 
 	cout << "Hospital A is up and running using UDP on port " << HospitalA_UDP_PORT << "." << endl;
 }
+
+char* float_to_charptr(float f) {
+		string scorestr = to_string(f);
+	//	cout << "string score is " << scorestr << endl;
+		int n = scorestr.length();
+		char* scorechar = (char*)malloc((n+1)*sizeof(char));
+		strcpy(scorechar, scorestr.c_str());
+	//	cout << "char array score is " << scorechar << endl;
+		return scorechar;
+		//cout << "string format score is " << res << endl;
+}
+
 
 int main(int argc, char* argv[]) {
 	loc = atoi(argv[1]);
@@ -242,11 +252,13 @@ int main(int argc, char* argv[]) {
 
 	bootup();
 	set_up_scheduler_sock();
-	udp_port_setup(argv[2], argv[3]);
-	
+	udp_port_setup();
+	send_message_to_scheduler(argv[2]);
+	send_message_to_scheduler(argv[3]);
+
 	cout << "Hospital A has total capacity " << totalCapacity << " and initial occupancy " << Occupancy << "." << endl;
 
-	while (true) {
+//	while (true) {
 		recieve_client_info();
 		if (mapMatrix.find(client_location) == mapMatrix.end()) {
 			cout << "HospitalA does not have the location " << client_location << " in map" << endl;
@@ -255,12 +267,29 @@ int main(int argc, char* argv[]) {
 			char* meg  = tmp;
 			send_message_to_scheduler(meg);
 			cout << "Hospital A has sent \"location not found\" to the Scheduler" << endl;
-			continue;
+			//continue;
 		}
 		float minDistance = find_shortest_distance();
 		cout << "Hospital A has found the shortest path to client, distance = " << minDistance << endl;
-		cal_score(minDistance);
-	}
+
+		float score = cal_score(minDistance);
+		
+		char* scoreMessage = float_to_charptr(score);
+		char* disMessage = float_to_charptr(minDistance);
+		// float_to_charptr(minDistance, &disMessage);
+		// float_to_charptr(score, &scoreMessage);
+
+		//sssset_up_schedssuler_sock();
+		cout << "char star score is " << scoreMessage << endl;
+		cout << "char star distance is " << disMessage << endl;
+		// send_message_to_scheduler(&minDistance);
+		// send_message_to_scheduler(&score);
+
+		send_message_to_scheduler(disMessage);
+		send_message_to_scheduler(scoreMessage);
+
+		cout << "Hospital A has sent score = " << score << " and distance = " << minDistance << " to the Scheduler" << endl;
+//	}
 	
 }
 
