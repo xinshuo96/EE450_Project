@@ -119,12 +119,21 @@ void listen_to_hospital(struct sockaddr_in hosp_addr, string hosp_name) {
 	if (hosp_name.compare("A") == 0) {
 		hosp_A.capacity = atoi(buf_cap);
 		hosp_A.occupancy = atoi(buf_occ);
+		// initialize score and distance to invalid value -1
+		hosp_A.score = -1;
+		hosp_A.distance = -1;
 	}else if (hosp_name.compare("B") == 0) {
 		hosp_B.capacity = atoi(buf_cap);
 		hosp_B.occupancy = atoi(buf_occ);
+		// initialize score and distance to invalid value -1
+		hosp_B.score = -1;
+		hosp_B.distance = -1;
 	}else if (hosp_name.compare("C") == 0) {
 		hosp_C.capacity = atoi(buf_cap);
 		hosp_C.occupancy = atoi(buf_occ);
+		// initialize score and distance to invalid value -1
+		hosp_C.score = -1;
+		hosp_C.distance = -1;
 	}
 }
 
@@ -132,8 +141,12 @@ void recv_dis_and_score(struct sockaddr_in hosp_addr, string hosp_name) {
 	cout << "listen to hospital " << hosp_name << endl;
 	char buf_dis[MAXBUFLEN];
 	char buf_scr[MAXBUFLEN];
-
+	const char* notfound = "location not found";
 	recv_from_hosp(buf_dis, hosp_addr);
+	
+	if (strcmp(buf_dis, notfound) == 0) {
+		return;
+	}
 	recv_from_hosp(buf_scr, hosp_addr);
 	if (hosp_name.compare("A") == 0) {
 		hosp_A.distance = atof(buf_dis);
@@ -248,6 +261,46 @@ void send_client_info_to_hospital(char* client_loc) {
 
 // }
 
+int assign_hospital() {
+	if (hosp_A.score == -1 && hosp_B.score == -1 && hosp_C.score == -1) {
+		return -1;
+	}
+	if (hosp_A.score == hosp_B.score && hosp_A.score > hosp_C.score) {
+		if (hosp_B.distance < hosp_A.distance) {
+			return 2;
+		}else {
+			return 1;
+		}
+	}else if (hosp_A.score == hosp_C.score && hosp_A.score > hosp_B.score) {
+		if (hosp_C.distance < hosp_A.distance) {
+			return 3;
+		}else {
+			return 1;
+		}
+	}else if (hosp_B.score == hosp_C.score && hosp_B.score > hosp_A.score) {
+		if (hosp_B.distance < hosp_C.distance) {
+			return 2;
+		}else {
+			return 3;
+		}
+	}else if (hosp_A.score == hosp_B.score && hosp_B.score == hosp_C.score) {
+		if (hosp_A.distance < hosp_B.distance && hosp_A.distance < hosp_C.distance) {
+			return 1;
+		}else if (hosp_B.distance < hosp_A.distance && hosp_B.distance < hosp_C.distance) {
+			return 2;
+		}else {
+			return 3;
+		}
+	}
+	if (hosp_A.score > hosp_B.score && hosp_A.score > hosp_C.score) {
+		return 1;
+	}else if (hosp_B.score > hosp_C.score && hosp_B.score > hosp_A.score) {
+		return 2;
+	}else {
+		return 3;
+	}
+}
+
 void assign_client() {
 	int new_fd;
 	int numbytes;
@@ -306,8 +359,8 @@ void assign_client() {
 		inet_ntop(client_addr.ss_family, get_in_addr((struct sockaddr *)&client_addr), s, sizeof s);
         printf("server: got connection from %s\n", s);
 
-	//	if (!fork()) { // this is the child process 
-	//		close(tcp_sockfd); // child doesn't need the listener 
+		if (!fork()) { // this is the child process 
+			close(tcp_sockfd); // child doesn't need the listener 
 			if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
             	perror("Error: scheduler fail to receive from client\n");
 			}
@@ -323,9 +376,91 @@ void assign_client() {
 			cout << "The Scheduler has received map information from Hospital B, the score = " << hosp_B.score << " and the distance = " << hosp_B.distance << endl;
 			recv_dis_and_score(hospitalC_addr, "C");
 			cout << "The Scheduler has received map information from Hospital C, the score = " << hosp_C.score << " and the distance = " << hosp_C.distance << endl;	
+			
+
+			int assign_res = assign_hospital();
+			const char* ass;
+			int numbytesA;
+			int numbytesB;
+			int numbytesC;
+			const char* assigned = "1";
+			const char* unassigned = "0";
+			
+			// send assignment result to hospital
+			if (assign_res == 1) {
+				ass = "A";
+				cout << "The scheduler has assigned Hospital A to the client" << endl;
+				hosp_A.occupancy += 1;
+				if ((numbytesA = sendto(udp_sockfd, assigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalA_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital A\n");
+					exit(1);
+				}
+				if ((numbytesB = sendto(udp_sockfd, unassigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalB_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital B\n");
+					exit(1);
+				}
+				if ((numbytesC = sendto(udp_sockfd, unassigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalC_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital ACn");
+					exit(1);
+				}
+				cout << "The scheduler has sent the result to Hospital A using UDP over port " << Scheduler_UDP_PORT << endl;
+			}else if (assign_res == 2) {
+				ass = "B";
+				cout << "The scheduler has assigned Hospital B to the client" << endl;
+				hosp_B.occupancy += 1;
+				if ((numbytesA = sendto(udp_sockfd, unassigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalA_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital A\n");
+					exit(1);
+				}
+				if ((numbytesB = sendto(udp_sockfd, assigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalB_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital B\n");
+					exit(1);
+				}
+				if ((numbytesC = sendto(udp_sockfd, unassigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalC_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital C\n");
+					exit(1);
+				}
+				cout << "The scheduler has sent the result to Hospital B using UDP over port " << Scheduler_UDP_PORT << endl;
+			}else if (assign_res == 3) {
+				ass = "C";
+				cout << "The scheduler has assigned Hospital C to the client" << endl;
+				hosp_C.occupancy += 1;
+				if ((numbytesA = sendto(udp_sockfd, unassigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalA_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital A\n");
+					exit(1);
+				}
+				if ((numbytesB = sendto(udp_sockfd, unassigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalB_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital B\n");
+					exit(1);
+				}
+				if ((numbytesC = sendto(udp_sockfd, assigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalC_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital C\n");
+					exit(1);
+				}
+				cout << "The scheduler has sent the result to Hospital C using UDP over port " << Scheduler_UDP_PORT << endl;
+			}else {
+				ass = "None";
+				if ((numbytesA = sendto(udp_sockfd, unassigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalA_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital A\n");
+					exit(1);
+				}
+				if ((numbytesB = sendto(udp_sockfd, unassigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalB_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital B\n");
+					exit(1);
+				}
+				if ((numbytesC = sendto(udp_sockfd, unassigned, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalC_addr, sizeof(struct sockaddr))) == -1) { 
+					perror("Error: scheduler fails to send result to hospital C\n");
+					exit(1);
+				}
+			}
+			// send assignment result to client
+			if ((numbytes = send(new_fd, ass, MAXDATASIZE-1, 0)) == -1) {
+            	perror("Error: scheduler fail to send assignment to client\n");
+			}
+		
 			close(new_fd);
-//			exit(0); 
-//		}
+			exit(0); 
+		}
 		close(new_fd); // parent doesn't need this
 	}
 	

@@ -233,6 +233,24 @@ char* float_to_charptr(float f) {
 		//cout << "string format score is " << res << endl;
 }
 
+void recv_assign_res() {
+	char ass_res[MAXBUFLEN];
+	int numbytes;
+	socklen_t addr_len = sizeof scheduler_addr;
+
+	if ((numbytes = recvfrom(udp_sockfd, ass_res, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, &addr_len)) == -1) { 
+		perror("Error: Hospital A fail to receive assignment result.\n");
+		exit(1);
+	}
+	
+	ass_res[numbytes] = '\0';
+	if (strcmp(ass_res, "1") == 0) {
+		Occupancy += 1;
+		cout << "Hospital A has been assigned to a client, ";
+		cout << "occupation is updated to " << Occupancy;
+		cout << " ,availability is " << totalCapacity - Occupancy << endl;
+	}
+}
 
 int main(int argc, char* argv[]) {
 	loc = atoi(argv[1]);
@@ -259,6 +277,10 @@ int main(int argc, char* argv[]) {
 	cout << "Hospital A has total capacity " << totalCapacity << " and initial occupancy " << Occupancy << "." << endl;
 
 	while (true) {
+		if (Occupancy >= totalCapacity) {
+			cout << "Hospital A is fully occupied" << endl;
+			continue;
+		}
 		recieve_client_info();
 		if (mapMatrix.find(client_location) == mapMatrix.end()) {
 			cout << "HospitalA does not have the location " << client_location << " in map" << endl;
@@ -287,13 +309,10 @@ int main(int argc, char* argv[]) {
 
 		send_message_to_scheduler(disMessage);
 		send_message_to_scheduler(scoreMessage);
-	//    int	numbytes;
-		// if ((numbytes = sendto(scheduler_sockfd, scoreMessage, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
-		// 	perror("Error: hosptial A fail sendto()\n");
-		// 	exit(1);
-		// }
 
 		cout << "Hospital A has sent score = " << score << " and distance = " << minDistance << " to the Scheduler" << endl;
+
+		recv_assign_res();
 	}
 	
 }
