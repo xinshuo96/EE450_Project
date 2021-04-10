@@ -1,0 +1,29 @@
+Name: Xinshuo Zhang
+USC ID: 9223940666
+This Assignment: Built an client-scheduler-hospital communication system, which, given a map.txt file, allows 
+                 client to send queries with his or her location included to the scheduler through udp, and 
+                 the scheduler would assign the client to one of Hospital A/B/C according to their distance
+                 from the client and their availability.  The communication between scheduler and hospitals 
+                 are don through tcp.
+Code Files:
+            *scheduler.cpp: Set up udp connections with hospitals and tcp connection with client for information
+                            exchange.  Specifically, scheduler receives capacity and occupancy data from each
+                            hospital, and location information from client.  After receiving location information
+                            from client, scheduler send the location of current client to all hospitals, and wait
+                            for the score and distance information sent back from all hospitals.  Then the scheduler
+                            assign current client to the hospital with the highest score.  If there is a tie, then 
+                            assign the client to the closest hospital.
+            *hospitalA/B/C.cpp: Communicate with scheudler over udp protocal.  Read location, capacity and initial 
+                            occupancy information from command line, and send capacity and occupancy information to
+                            scheduler.  After receiving client location information from scheduler, hospital finds
+                            the shortest path between client and itself, and calculate the distance.  Then it sends
+                            the score, which is calculated according to its availability and distance to client, 
+                            back to scheduler.  At last, it waits for assignment from scheduler and updates its 
+                            occupancy and availability if assigned.
+            *client.cpp:    Read location info from command line and send the location info to scheduler using tcp.
+                            After scheduler sends back the corresponding assignment information, client prints out
+                            his or her assigned hospital and closes the tcp connection.
+Format of messages exchanged: char*
+Idiosyncrasy: None
+Reused code: part of the functions, which includes send_loc_to_scheduler in client.cpp, udp_port_setup in hospitalA/B/C.cpp
+             are edited from beej's tutorial
