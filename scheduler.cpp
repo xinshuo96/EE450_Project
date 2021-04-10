@@ -195,25 +195,25 @@ void send_client_info_to_hospital(char* client_loc) {
 	int numbytesB;
 	int numbytesC;
 	if (hosp_A.capacity > hosp_A.occupancy) {
-		if ((numbytesA = sendto(hospA_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalA_addr, sizeof(struct sockaddr))) == -1) { 
+		if ((numbytesA = sendto(udp_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalA_addr, sizeof(struct sockaddr))) == -1) { 
 			perror("Error: scheduler fails to send client location to hospital A\n");
 			exit(1);
 		}
-		cout << "The Scheduler has sent client location to Hospital A using UDP over port " << HospitalA_PORT << endl;
+		cout << "The Scheduler has sent client location to Hospital A using UDP over port " << Scheduler_UDP_PORT << endl;
 	}
 	if (hosp_B.capacity > hosp_B.occupancy) {
-		if ((numbytesB = sendto(hospB_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalB_addr, sizeof(struct sockaddr))) == -1) { 
+		if ((numbytesB = sendto(udp_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalB_addr, sizeof(struct sockaddr))) == -1) { 
 			perror("Error: scheduler fails to send client location to hospital B\n");
 			exit(1);
 		}
-		cout << "The Scheduler has sent client location to Hospital B using UDP over port " << HospitalB_PORT << endl;
+		cout << "The Scheduler has sent client location to Hospital B using UDP over port " << Scheduler_UDP_PORT << endl;
 	}
 	if (hosp_C.capacity > hosp_C.occupancy) {
-		if ((numbytesC = sendto(hospC_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalC_addr, sizeof(struct sockaddr))) == -1) { 
+		if ((numbytesC = sendto(udp_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&hospitalC_addr, sizeof(struct sockaddr))) == -1) { 
 			perror("Error: scheduler fails to send client location to hospital C\n");
 			exit(1);
 		}
-		cout << "The Scheduler has sent client location to Hospital C using UDP over port " << HospitalC_PORT << endl;
+		cout << "The Scheduler has sent client location to Hospital C using UDP over port " << Scheduler_UDP_PORT << endl;
 	}
 }
 
@@ -306,8 +306,8 @@ void assign_client() {
 		inet_ntop(client_addr.ss_family, get_in_addr((struct sockaddr *)&client_addr), s, sizeof s);
         printf("server: got connection from %s\n", s);
 
-		if (!fork()) { // this is the child process 
-			close(tcp_sockfd); // child doesn't need the listener 
+	//	if (!fork()) { // this is the child process 
+	//		close(tcp_sockfd); // child doesn't need the listener 
 			if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
             	perror("Error: scheduler fail to receive from client\n");
 			}
@@ -316,7 +316,7 @@ void assign_client() {
  
             
 			send_client_info_to_hospital(buf);
-			break;
+		
 			recv_dis_and_score(hospitalA_addr, "A");
 			cout << "The Scheduler has received map information from Hospital A, the score = " << hosp_A.score << " and the distance = " << hosp_A.distance << endl;
 			recv_dis_and_score(hospitalB_addr, "B");
@@ -324,8 +324,8 @@ void assign_client() {
 			recv_dis_and_score(hospitalC_addr, "C");
 			cout << "The Scheduler has received map information from Hospital C, the score = " << hosp_C.score << " and the distance = " << hosp_C.distance << endl;	
 			close(new_fd);
-			exit(0); 
-		}
+//			exit(0); 
+//		}
 		close(new_fd); // parent doesn't need this
 	}
 	
@@ -341,5 +341,5 @@ int main(int argc, char* argv[]) {
 	initialize_hospital_info();
 	assign_client();
 //	recv_dis_and_score(hospitalA_addr, "A");
-	initialize_hospital_info();
+//	initialize_hospital_info();
 }

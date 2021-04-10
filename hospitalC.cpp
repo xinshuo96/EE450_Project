@@ -149,7 +149,7 @@ float find_shortest_distance() {
 void send_message_to_scheduler(void* message) {
 	int numbytes;
 
-	if ((numbytes = sendto(scheduler_sockfd, message, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
+	if ((numbytes = sendto(udp_sockfd, message, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
 		perror("Error: hosptial C fail sendto()\n");
 		exit(1);
 	}

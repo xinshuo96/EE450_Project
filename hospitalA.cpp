@@ -145,10 +145,10 @@ float find_shortest_distance() {
 
 }
 
-void send_message_to_scheduler(void* message) {
+void send_message_to_scheduler(char* message) {
 	int numbytes;
 
-	if ((numbytes = sendto(scheduler_sockfd, message, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
+	if ((numbytes = sendto(udp_sockfd, message, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
 		perror("Error: hosptial A fail sendto()\n");
 		exit(1);
 	}
@@ -258,7 +258,7 @@ int main(int argc, char* argv[]) {
 
 	cout << "Hospital A has total capacity " << totalCapacity << " and initial occupancy " << Occupancy << "." << endl;
 
-//	while (true) {
+	while (true) {
 		recieve_client_info();
 		if (mapMatrix.find(client_location) == mapMatrix.end()) {
 			cout << "HospitalA does not have the location " << client_location << " in map" << endl;
@@ -267,7 +267,7 @@ int main(int argc, char* argv[]) {
 			char* meg  = tmp;
 			send_message_to_scheduler(meg);
 			cout << "Hospital A has sent \"location not found\" to the Scheduler" << endl;
-			//continue;
+			continue;
 		}
 		float minDistance = find_shortest_distance();
 		cout << "Hospital A has found the shortest path to client, distance = " << minDistance << endl;
@@ -287,9 +287,14 @@ int main(int argc, char* argv[]) {
 
 		send_message_to_scheduler(disMessage);
 		send_message_to_scheduler(scoreMessage);
+	//    int	numbytes;
+		// if ((numbytes = sendto(scheduler_sockfd, scoreMessage, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
+		// 	perror("Error: hosptial A fail sendto()\n");
+		// 	exit(1);
+		// }
 
 		cout << "Hospital A has sent score = " << score << " and distance = " << minDistance << " to the Scheduler" << endl;
-//	}
+	}
 	
 }
 
