@@ -74,18 +74,21 @@ void send_loc_to_scheduler(char* loc) {
 	
 	freeaddrinfo(servinfo);
 	if (send(sockfd, loc, MAXDATASIZE-1, 0) == -1)
-                perror("Error: client fail to send location.\n");
+        perror("Error: client fail to send location.\n");
+
+	cout << "Client has sent query to Scheduler using TCP: client location " << loc << endl;
 }
 
 void recv_result() {
 	char buf[MAXDATASIZE];
 	int numbytes;
 	if ((numbytes = recv(sockfd, buf, MAXDATASIZE-1, 0)) == -1) {
-      	perror("Error: scheduler fail to receive from client\n");
+      	perror("Error: client fail to receive result from scheduler\n");
 	}
 	buf[numbytes] = '\0';
 	if (strcmp(buf, "None") == 0) {
 		cout << "Score = None, No assignment" << endl;
+		cout << "The client has received results from the Scheduler: assigned to hospital None" << endl;
 	} else {
 		cout << "The client has received results from the Scheduler: assigned to hospital " << buf << endl;
 	}

@@ -72,7 +72,7 @@ void recieve_client_info() {
 	char client_loc[MAXBUFLEN];
 	int numbytes;
 	socklen_t addr_len = sizeof scheduler_addr;
-	cout << "Hosptial A is waiting for client location..." << endl;
+	//cout << "Hosptial A is waiting for client location..." << endl;
 	if ((numbytes = recvfrom(udp_sockfd, client_loc, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, &addr_len)) == -1) { 
 		perror("Error: Hospital A fail to receive client location info.\n");
 		exit(1);
@@ -248,7 +248,7 @@ void recv_assign_res() {
 		Occupancy += 1;
 		cout << "Hospital A has been assigned to a client, ";
 		cout << "occupation is updated to " << Occupancy;
-		cout << " ,availability is " << totalCapacity - Occupancy << endl;
+		cout << ", availability is updated to " << (float)(totalCapacity - Occupancy)/(float)totalCapacity << endl;
 	}
 }
 
@@ -282,6 +282,9 @@ int main(int argc, char* argv[]) {
 			continue;
 		}
 		recieve_client_info();
+		float avail = (float)(totalCapacity - Occupancy)/(float)totalCapacity;
+		cout << "Hospital A has capacity = " << totalCapacity << ", occupation = " << Occupancy << ", availability = " << avail << endl;
+	
 		if (mapMatrix.find(client_location) == mapMatrix.end()) {
 			cout << "HospitalA does not have the location " << client_location << " in map" << endl;
 			
@@ -302,8 +305,8 @@ int main(int argc, char* argv[]) {
 		// float_to_charptr(score, &scoreMessage);
 
 		//sssset_up_schedssuler_sock();
-		cout << "char star score is " << scoreMessage << endl;
-		cout << "char star distance is " << disMessage << endl;
+	//	cout << "char star score is " << scoreMessage << endl;
+	//	cout << "char star distance is " << disMessage << endl;
 		// send_message_to_scheduler(&minDistance);
 		// send_message_to_scheduler(&score);
 

@@ -250,7 +250,7 @@ void recv_assign_res() {
 		Occupancy += 1;
 		cout << "Hospital B has been assigned to a client, ";
 		cout << "occupation is updated to " << Occupancy;
-		cout << " ,availability is " << totalCapacity - Occupancy << endl;
+		cout << ", availability is updated to " << (float)(totalCapacity - Occupancy)/(float)totalCapacity << endl;
 	}
 }
 
@@ -283,6 +283,9 @@ int main(int argc, char* argv[]) {
 			continue;
 		}
 		recieve_client_info();
+		float avail = (float)(totalCapacity - Occupancy)/(float)totalCapacity;
+		cout << "Hospital B has capacity = " << totalCapacity << ", occupation = " << Occupancy << ", availability = " << avail << endl;
+
 		if (mapMatrix.find(client_location) == mapMatrix.end()) {
 			cout << "HospitalB does not have the location " << client_location << " in map" << endl;
 			

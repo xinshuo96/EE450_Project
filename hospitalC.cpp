@@ -250,7 +250,7 @@ void recv_assign_res() {
 		Occupancy += 1;
 		cout << "Hospital C has been assigned to a client, ";
 		cout << "occupation is updated to " << Occupancy;
-		cout << " ,availability is " << totalCapacity - Occupancy << endl;
+		cout << ", availability is updated to " << (float)(totalCapacity - Occupancy)/(float)totalCapacity << endl;
 	}
 }
 
@@ -283,7 +283,7 @@ int main(int argc, char* argv[]) {
 	set_up_scheduler_sock();
 	udp_port_setup(argv[2], argv[3]);
 	
-	cout << "Hospital C has total capacity " << totalCapacity << "and initial occupancy " << Occupancy << "." << endl;
+	cout << "Hospital C has total capacity " << totalCapacity << " and initial occupancy " << Occupancy << "." << endl;
 
 	
 //	recieve_client_info();
@@ -293,6 +293,9 @@ int main(int argc, char* argv[]) {
 			continue;
 		}
 		recieve_client_info();
+		float avail = (float)(totalCapacity - Occupancy)/(float)totalCapacity;
+		cout << "Hospital C has capacity = " << totalCapacity << ", occupation = " << Occupancy << ", availability = " << avail << endl;
+	
 		if (mapMatrix.find(client_location) == mapMatrix.end()) {
 			cout << "HospitalC does not have the location " << client_location << " in map" << endl;
 			
