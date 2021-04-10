@@ -63,10 +63,7 @@ void set_up_scheduler_sock() {
 			perror("Error: fail to create socket for scheduler.\n");
 			exit(1);
 	}
-	// if (bind(scheduler_sockfd,(struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))==-1) {
-	// 		perror("Error: scheduler fail to bind.\n");
-	// 		exit(1);
-	// }
+
 
 }
 
@@ -121,10 +118,7 @@ float find_shortest_distance() {
 	disFromSource[client_location] = 0;
 	for (int i = 0; i < mapMatrix.size(); i ++) {
 		int closestVertex = find_closest_vertex(finalized, disFromSource);
-	// 	cout << "============" << endl;
-	// 	cout << "Closet vertex is " << closestVertex << endl;
-	// 	cout << "Cur Distance frm source is " << disFromSource[closestVertex] << endl;
-	// 	cout << "Dis between vertex 2 and 0 is " << mapMatrix[2][0] << endl;
+
 		finalized[closestVertex] = true;
 		if (closestVertex == loc) {
 		
@@ -159,6 +153,7 @@ void send_message_to_scheduler(void* message) {
 
 float cal_score(float dis) {
 	if (dis <= 0) {
+		cout << "Hospital B has the score = None" << endl;
 		return dis;
 	}
 	float avail = (float)(totalCapacity-Occupancy)/(float)totalCapacity;
@@ -213,14 +208,6 @@ int udp_port_setup(char* totalCapacity, char* initialOccupancy) {
 	send_message_to_scheduler(totalCapacity);
 	send_message_to_scheduler(initialOccupancy);
 	
-	// if ((numbytes = sendto(udp_sockfd, totalCapacity, MAXBUFLEN-1 , 0,  (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
-	// 	perror("Error: recvfrom");
-	// 	exit(1);
-	// }
-	// if ((numbytes = sendto(udp_sockfd, initialOccupancy, MAXBUFLEN-1 , 0,  (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
-	// 	perror("Error: recvfrom");
-	// 	exit(1);
-	// }
 
 	cout << "Hospital B is up and running using UDP on port " << HospitalB_UDP_PORT << "." << endl;
 }
@@ -255,14 +242,6 @@ void recv_assign_res() {
 }
 
 
-// void float_to_charptr(float f, char* res) {
-// 		string scorestr = to_string(f);
-// 		int n = scorestr.length();
-// 		char scorechar[n+1];
-// 		strcpy(scorechar, scorestr.c_str());
-// 		res = scorechar;
-// }
-
 int main(int argc, char* argv[]) {
 	loc = atoi(argv[1]);
 	totalCapacity = atoi(argv[2]);
@@ -287,7 +266,7 @@ int main(int argc, char* argv[]) {
 		cout << "Hospital B has capacity = " << totalCapacity << ", occupation = " << Occupancy << ", availability = " << avail << endl;
 
 		if (mapMatrix.find(client_location) == mapMatrix.end()) {
-			cout << "HospitalB does not have the location " << client_location << " in map" << endl;
+			cout << "Hospital B does not have the location " << client_location << " in map" << endl;
 			
 			char tmp[] = "location not found";
 			char* meg  = tmp;
@@ -296,16 +275,17 @@ int main(int argc, char* argv[]) {
 			continue;
 		}
 		float minDistance = find_shortest_distance();
-		cout << "Hospital B has found the shortest path to client, distance = " << minDistance << endl;
+		if (minDistance < 0) {
+			cout << "Hospital B has found the shortest path to client, distance = None" << endl;
+		}else {
+			cout << "Hospital B has found the shortest path to client, distance = " << minDistance << endl;
+		}
+	//	cout << "Hospital B has found the shortest path to client, distance = " << minDistance << endl;
 		float score = cal_score(minDistance);
 		
 		char* scoreMessage = float_to_charptr(score);
 		char* disMessage = float_to_charptr(minDistance);
-		// float_to_charptr(minDistance, disMessage);
-		// float_to_charptr(score, scoreMessage);
-
-		// send_message_to_scheduler(&minDistance);
-		// send_message_to_scheduler(&score);
+	
 		send_message_to_scheduler(disMessage);
 		send_message_to_scheduler(scoreMessage);
 	

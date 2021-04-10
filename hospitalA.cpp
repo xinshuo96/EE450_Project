@@ -61,10 +61,7 @@ void set_up_scheduler_sock() {
 			perror("Error: fail to create socket for scheduler");
 			exit(1);
 	}
-	// if (bind(scheduler_sockfd,(struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))==-1) {
-	// 		perror("Error: scheduler fail to bind");
-	// 		exit(1);
-	// }
+
 
 }
 
@@ -120,10 +117,7 @@ float find_shortest_distance() {
 	disFromSource[client_location] = 0;
 	for (int i = 0; i < mapMatrix.size(); i ++) {
 		int closestVertex = find_closest_vertex(finalized, disFromSource);
-	// 	cout << "============" << endl;
-	// 	cout << "Closet vertex is " << closestVertex << endl;
-	// 	cout << "Cur Distance frm source is " << disFromSource[closestVertex] << endl;
-	// 	cout << "Dis between vertex 2 and 0 is " << mapMatrix[2][0] << endl;
+
 		finalized[closestVertex] = true;
 		if (closestVertex == loc) {
 		
@@ -157,7 +151,8 @@ void send_message_to_scheduler(char* message) {
 }
 
 float cal_score(float dis) {
-	if (dis <= 0) {
+	if (dis <= 0.0) {
+		cout << "Hospital A has the score = None" << endl;
 		return dis;
 	}
 	float avail = (float)(totalCapacity-Occupancy)/(float)totalCapacity;
@@ -172,9 +167,7 @@ float cal_score(float dis) {
 void udp_port_setup() {
 	struct addrinfo hints, *servinfo, *p; 
 	int rv;
-//	int numbytes;
-//	struct sockaddr_storage their_addr; 
-	// char buf[MAXBUFLEN];
+
 	socklen_t addr_len;
 	char s[INET6_ADDRSTRLEN];
 	memset(&hints, 0, sizeof hints);
@@ -206,18 +199,6 @@ void udp_port_setup() {
 
 	freeaddrinfo(servinfo);
 
-	
-	//addr_len = sizeof scheduler_addr;
-
-	// send initial capacity and occupancy to scheduler
-	// if ((numbytes = sendto(scheduler_sockfd, totalCapacity, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
-	// 	perror("Error: hosptial A fail sendto() of capacity\n");
-	// 	exit(1);
-	// }
-	// if ((numbytes = sendto(scheduler_sockfd, initialOccupancy, MAXBUFLEN-1 , 0, (struct sockaddr *)&scheduler_addr, sizeof(struct sockaddr))) == -1) { 
-	// 	perror("Error: hosptial A fail sendto() of occupancy\n");
-	// 	exit(1);
-	// }
 
 	cout << "Hospital A is up and running using UDP on port " << HospitalA_UDP_PORT << "." << endl;
 }
@@ -257,17 +238,6 @@ int main(int argc, char* argv[]) {
 	totalCapacity = atoi(argv[2]);
 	Occupancy = atoi(argv[3]);
 
-	// set scheduler info
-	// memset(&scheduler_addr, 0, sizeof(scheduler_addr));   
-	// scheduler_addr.sin_family = AF_UNSPEC;		
-	// scheduler_addr.sin_port = htons(33666);
-	// scheduler_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	
-	// if ((scheduler_sockfd = socket(AF_UNSPEC, SOCK_DGRAM, 0)) == -1) {
-	// 	perror("Error: scheduler socket error");
-	// 	exit(1);
-	// }
-
 	bootup();
 	set_up_scheduler_sock();
 	udp_port_setup();
@@ -286,7 +256,7 @@ int main(int argc, char* argv[]) {
 		cout << "Hospital A has capacity = " << totalCapacity << ", occupation = " << Occupancy << ", availability = " << avail << endl;
 	
 		if (mapMatrix.find(client_location) == mapMatrix.end()) {
-			cout << "HospitalA does not have the location " << client_location << " in map" << endl;
+			cout << "Hospital A does not have the location " << client_location << " in map" << endl;
 			
 			char tmp[] = "location not found";
 			char* meg  = tmp;
@@ -295,20 +265,18 @@ int main(int argc, char* argv[]) {
 			continue;
 		}
 		float minDistance = find_shortest_distance();
-		cout << "Hospital A has found the shortest path to client, distance = " << minDistance << endl;
+		if (minDistance < 0) {
+			cout << "Hospital A has found the shortest path to client, distance = None" << endl;
+		}else {
+			cout << "Hospital A has found the shortest path to client, distance = " << minDistance << endl;
+		}
+	//	cout << "Hospital A has found the shortest path to client, distance = " << minDistance << endl;
 
 		float score = cal_score(minDistance);
 		
 		char* scoreMessage = float_to_charptr(score);
 		char* disMessage = float_to_charptr(minDistance);
-		// float_to_charptr(minDistance, &disMessage);
-		// float_to_charptr(score, &scoreMessage);
-
-		//sssset_up_schedssuler_sock();
-	//	cout << "char star score is " << scoreMessage << endl;
-	//	cout << "char star distance is " << disMessage << endl;
-		// send_message_to_scheduler(&minDistance);
-		// send_message_to_scheduler(&score);
+	
 
 		send_message_to_scheduler(disMessage);
 		send_message_to_scheduler(scoreMessage);
